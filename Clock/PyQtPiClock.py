@@ -10,13 +10,13 @@ import json
 import locale
 import random
 
-from PyQt4 import QtGui, QtCore, QtNetwork
-from PyQt4.QtGui import QPixmap, QBrush, QColor
-from PyQt4.QtGui import QPainter, QImage, QFont
-from PyQt4.QtCore import QUrl
-from PyQt4.QtCore import Qt
-from PyQt4.QtNetwork import QNetworkReply
-from PyQt4.QtNetwork import QNetworkRequest
+from PyQt5 import QtGui, QtCore, QtNetwork, QtWidgets
+from PyQt5.QtGui import QPixmap, QBrush, QColor
+from PyQt5.QtGui import QPainter, QImage, QFont
+from PyQt5.QtCore import QUrl, QObject
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtNetwork import QNetworkReply
+from PyQt5.QtNetwork import QNetworkRequest
 from subprocess import Popen
 
 sys.dont_write_bytecode = True
@@ -50,7 +50,7 @@ def tick():
         angle = now.second * 6
         ts = secpixmap.size()
         secpixmap2 = secpixmap.transformed(
-            QtGui.QMatrix().scale(
+            QtGui.QTransform().scale(
                 float(clockrect.width()) / ts.height(),
                 float(clockrect.height()) / ts.height()
             ).rotate(angle),
@@ -69,7 +69,7 @@ def tick():
             angle = now.minute * 6
             ts = minpixmap.size()
             minpixmap2 = minpixmap.transformed(
-                QtGui.QMatrix().scale(
+                QtGui.QTransform().scale(
                     float(clockrect.width()) / ts.height(),
                     float(clockrect.height()) / ts.height()
                 ).rotate(angle),
@@ -87,7 +87,7 @@ def tick():
             angle = ((now.hour % 12) + now.minute / 60.0) * 30.0
             ts = hourpixmap.size()
             hourpixmap2 = hourpixmap.transformed(
-                QtGui.QMatrix().scale(
+                QtGui.QTransform().scale(
                     float(clockrect.width()) / ts.height(),
                     float(clockrect.height()) / ts.height()
                 ).rotate(angle),
@@ -230,7 +230,10 @@ def wxfinished():
     attribution.setText("DarkSky.net")
     attribution2.setText("DarkSky.net")
 
-    wxstr = str(wxreply.readAll())
+    wxstr = bytearray(wxreply.readAll())
+    print("****** DEBUG *******")
+    print(wxstr)
+    print("****** DEBUG *******")
     wxdata = json.loads(wxstr)
     f = wxdata['currently']
     wxiconpixmap = QtGui.QPixmap(Config.icons + "/" + f['icon'] + ".png")
@@ -299,7 +302,7 @@ def wxfinished():
     for i in range(0, 3):
         f = wxdata['hourly']['data'][i * 3 + 2]
         fl = forecast[i]
-        icon = fl.findChild(QtGui.QLabel, "icon")
+        icon = fl.findChild(QtWidgets.QLabel, "icon")
         wxiconpixmap = QtGui.QPixmap(
             Config.icons + "/" + f['icon'] + ".png")
         icon.setPixmap(wxiconpixmap.scaled(
@@ -307,8 +310,8 @@ def wxfinished():
             icon.height(),
             Qt.IgnoreAspectRatio,
             Qt.SmoothTransformation))
-        wx = fl.findChild(QtGui.QLabel, "wx")
-        day = fl.findChild(QtGui.QLabel, "day")
+        wx = fl.findChild(QtWidgets.QLabel, "wx")
+        day = fl.findChild(QtWidgets.QLabel, "day")
         day.setText("{0:%A %I:%M%p}".format(datetime.datetime.fromtimestamp(
             int(f['time']))))
         s = ''
@@ -347,15 +350,15 @@ def wxfinished():
     for i in range(3, 9):
         f = wxdata['daily']['data'][i - 3]
         fl = forecast[i]
-        icon = fl.findChild(QtGui.QLabel, "icon")
+        icon = fl.findChild(QtWidgets.QLabel, "icon")
         wxiconpixmap = QtGui.QPixmap(Config.icons + "/" + f['icon'] + ".png")
         icon.setPixmap(wxiconpixmap.scaled(
             icon.width(),
             icon.height(),
             Qt.IgnoreAspectRatio,
             Qt.SmoothTransformation))
-        wx = fl.findChild(QtGui.QLabel, "wx")
-        day = fl.findChild(QtGui.QLabel, "day")
+        wx = fl.findChild(QtWidgets.QLabel, "wx")
+        day = fl.findChild(QtWidgets.QLabel, "day")
         day.setText("{0:%A}".format(datetime.datetime.fromtimestamp(
             int(f['time']))))
         s = ''
@@ -397,7 +400,7 @@ def wxfinished():
 def getwx():
     global wxurl
     global wxreply
-    print "getting current and forecast:" + time.ctime()
+    print ("getting current and forecast:" + time.ctime())
     wxurl = 'https://api.darksky.net/forecast/' + \
         ApiKeys.dsapi + \
         '/'
@@ -405,7 +408,7 @@ def getwx():
         str(Config.location.lng)
     wxurl += '?units=us&lang=' + Config.Language.lower()
     wxurl += '&r=' + str(random.random())
-    print wxurl
+    print(wxurl)
     r = QUrl(wxurl)
     r = QNetworkRequest(r)
     wxreply = manager.get(r)
@@ -449,7 +452,7 @@ def qtstart():
     temptimer.start(1000 * 10 * 60 + random.uniform(1000, 10000))
 
 
-class Radar(QtGui.QLabel):
+class Radar(QtWidgets.QLabel):
 
     def __init__(self, parent, radar, rect, myname):
         global xscale, yscale
@@ -460,8 +463,8 @@ class Radar(QtGui.QLabel):
         self.point = radar["center"]
         self.radar = radar
         self.baseurl = self.mapurl(radar, rect)
-        print "map base url: " + self.baseurl
-        QtGui.QLabel.__init__(self, parent)
+        print("map base url: " + self.baseurl)
+        QtWidgets.QLabel.__init__(self, parent)
         self.interval = Config.radar_refresh * 60
         self.lastwx = 0
         self.retries = 0
@@ -490,12 +493,12 @@ class Radar(QtGui.QLabel):
         self.setStyleSheet("#radar { background-color: grey; }")
         self.setAlignment(Qt.AlignCenter)
 
-        self.wwx = QtGui.QLabel(self)
+        self.wwx = QtWidgets.QLabel(self)
         self.wwx.setObjectName("wx")
         self.wwx.setStyleSheet("#wx { background-color: transparent; }")
         self.wwx.setGeometry(0, 0, rect.width(), rect.height())
 
-        self.wmk = QtGui.QLabel(self)
+        self.wmk = QtWidgets.QLabel(self)
         self.wmk.setObjectName("mk")
         self.wmk.setStyleSheet("#mk { background-color: transparent; }")
         self.wmk.setGeometry(0, 0, rect.width(), rect.height())
@@ -552,7 +555,7 @@ class Radar(QtGui.QLabel):
         self.frameImages = newf
         firstt = t - self.anim * 600
         for tt in range(firstt, t+1, 600):
-            print "get... " + str(tt) + " " + self.myname
+            print("get... " + str(tt) + " " + self.myname)
             gotit = False
             for f in self.frameImages:
                 if f["time"] == tt:
@@ -572,14 +575,15 @@ class Radar(QtGui.QLabel):
                 tileurl = "https://tilecache.rainviewer.com/v2/radar/%d/%s" \
                     % (t, tt)
                 self.tileurls.append(tileurl)
-        print self.myname + " " + str(self.getIndex) + " " + self.tileurls[i]
+        print(self.myname + " " + str(self.getIndex) + " " + self.tileurls[i])
         self.tilereq = QNetworkRequest(QUrl(self.tileurls[i]))
         self.tilereply = manager.get(self.tilereq)
-        QtCore.QObject.connect(self.tilereply, QtCore.SIGNAL(
-                "finished()"), self.getTilesReply)
+#        QtCore.QObject.connect(self.tilereply, QtCore.SIGNAL(
+#                "finished()"), self.getTilesReply)
+        self.tilereply.finished.connect(self.getTilesReply)  
 
     def getTilesReply(self):
-        print "getTilesReply " + str(self.getIndex)
+        print("getTilesReply " + str(self.getIndex))
         if self.tilereply.error() != QNetworkReply.NoError:
                 return
         self.tileQimages.append(QImage())
@@ -743,8 +747,9 @@ class Radar(QtGui.QLabel):
         global manager
         self.basereq = QNetworkRequest(QUrl(self.baseurl))
         self.basereply = manager.get(self.basereq)
-        QtCore.QObject.connect(self.basereply, QtCore.SIGNAL(
-            "finished()"), self.basefinished)
+#        QtCore.QObject.connect(self.basereply, QtCore.SIGNAL(
+#            'finished'), self.basefinished)
+        self.basereply.finished.connect(self.basefinished)
 
     def start(self, interval=0):
         if interval > 0:
@@ -755,11 +760,11 @@ class Radar(QtGui.QLabel):
         self.lastget = time.time() - self.interval + random.uniform(3, 10)
 
     def wxstart(self):
-        print "wxstart for " + self.myname
+        print("wxstart for " + self.myname)
         self.timer.start(200)
 
     def wxstop(self):
-        print "wxstop for " + self.myname
+        print("wxstop for " + self.myname)
         self.timer.stop()
 
     def stop(self):
@@ -771,7 +776,7 @@ class Radar(QtGui.QLabel):
 
 
 def realquit():
-    QtGui.QApplication.exit(0)
+    QtWidgets.QApplication.exit(0)
 
 
 def myquit(a=0, b=0):
@@ -813,7 +818,7 @@ def nextframe(plusminus):
     fixupframe(frames[framep], True)
 
 
-class myMain(QtGui.QWidget):
+class myMain(QtWidgets.QWidget):
 
     def keyPressEvent(self, event):
         global weatherplayer, lastkeytime
@@ -848,7 +853,7 @@ if len(sys.argv) > 1:
     configname = sys.argv[1]
 
 if not os.path.isfile(configname + ".py"):
-    print "Config file not found %s" % configname + ".py"
+    print("Config file not found %s" % configname + ".py")
     exit(1)
 
 Config = __import__(configname)
@@ -962,7 +967,7 @@ weatherplayer = None
 lastkeytime = 0
 lastapiget = time.time()
 
-app = QtGui.QApplication(sys.argv)
+app = QtWidgets.QApplication(sys.argv)
 desktop = app.desktop()
 rec = desktop.screenGeometry()
 height = rec.height()
@@ -986,14 +991,14 @@ yscale = float(height) / 900.0
 frames = []
 framep = 0
 
-frame1 = QtGui.QFrame(w)
+frame1 = QtWidgets.QFrame(w)
 frame1.setObjectName("frame1")
 frame1.setGeometry(0, 0, width, height)
 frame1.setStyleSheet("#frame1 { background-color: black; border-image: url(" +
                      Config.background + ") 0 0 0 0 stretch stretch;}")
 frames.append(frame1)
 
-frame2 = QtGui.QFrame(w)
+frame2 = QtWidgets.QFrame(w)
 frame2.setObjectName("frame2")
 frame2.setGeometry(0, 0, width, height)
 frame2.setStyleSheet("#frame2 { background-color: blue; border-image: url(" +
@@ -1001,7 +1006,7 @@ frame2.setStyleSheet("#frame2 { background-color: blue; border-image: url(" +
 frame2.setVisible(False)
 frames.append(frame2)
 
-# frame3 = QtGui.QFrame(w)
+# frame3 = QtWidgets.QFrame(w)
 # frame3.setObjectName("frame3")
 # frame3.setGeometry(0,0,width,height)
 # frame3.setStyleSheet("#frame3 { background-color: blue; border-image:
@@ -1009,7 +1014,7 @@ frames.append(frame2)
 # frame3.setVisible(False)
 # frames.append(frame3)
 
-squares1 = QtGui.QFrame(frame1)
+squares1 = QtWidgets.QFrame(frame1)
 squares1.setObjectName("squares1")
 squares1.setGeometry(0, height - yscale * 600, xscale * 340, yscale * 600)
 squares1.setStyleSheet(
@@ -1017,7 +1022,7 @@ squares1.setStyleSheet(
     Config.squares1 +
     ") 0 0 0 0 stretch stretch;}")
 
-squares2 = QtGui.QFrame(frame1)
+squares2 = QtWidgets.QFrame(frame1)
 squares2.setObjectName("squares2")
 squares2.setGeometry(width - xscale * 340, 0, xscale * 340, yscale * 900)
 squares2.setStyleSheet(
@@ -1026,7 +1031,7 @@ squares2.setStyleSheet(
     ") 0 0 0 0 stretch stretch;}")
 
 if not Config.digital:
-    clockface = QtGui.QFrame(frame1)
+    clockface = QtWidgets.QFrame(frame1)
     clockface.setObjectName("clockface")
     clockrect = QtCore.QRect(
         width / 2 - height * .4,
@@ -1039,15 +1044,15 @@ if not Config.digital:
         Config.clockface +
         ") 0 0 0 0 stretch stretch;}")
 
-    hourhand = QtGui.QLabel(frame1)
+    hourhand = QtWidgets.QLabel(frame1)
     hourhand.setObjectName("hourhand")
     hourhand.setStyleSheet("#hourhand { background-color: transparent; }")
 
-    minhand = QtGui.QLabel(frame1)
+    minhand = QtWidgets.QLabel(frame1)
     minhand.setObjectName("minhand")
     minhand.setStyleSheet("#minhand { background-color: transparent; }")
 
-    sechand = QtGui.QLabel(frame1)
+    sechand = QtWidgets.QLabel(frame1)
     sechand.setObjectName("sechand")
     sechand.setStyleSheet("#sechand { background-color: transparent; }")
 
@@ -1058,7 +1063,7 @@ if not Config.digital:
     secpixmap = QtGui.QPixmap(Config.sechand)
     secpixmap2 = QtGui.QPixmap(Config.sechand)
 else:
-    clockface = QtGui.QLabel(frame1)
+    clockface = QtWidgets.QLabel(frame1)
     clockface.setObjectName("clockface")
     clockrect = QtCore.QRect(
         width / 2 - height * .4,
@@ -1100,7 +1105,7 @@ radar4rect = QtCore.QRect(726 * xscale, 50 * yscale,
 objradar4 = Radar(frame2, Config.radar4, radar4rect, "radar4")
 
 
-datex = QtGui.QLabel(frame1)
+datex = QtWidgets.QLabel(frame1)
 datex.setObjectName("datex")
 datex.setStyleSheet("#datex { font-family:sans-serif; color: " +
                     Config.textcolor +
@@ -1112,7 +1117,7 @@ datex.setStyleSheet("#datex { font-family:sans-serif; color: " +
 datex.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
 datex.setGeometry(0, 0, width, 100)
 
-datex2 = QtGui.QLabel(frame2)
+datex2 = QtWidgets.QLabel(frame2)
 datex2.setObjectName("datex2")
 datex2.setStyleSheet("#datex2 { font-family:sans-serif; color: " +
                      Config.textcolor +
@@ -1122,7 +1127,7 @@ datex2.setStyleSheet("#datex2 { font-family:sans-serif; color: " +
                      "}")
 datex2.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
 datex2.setGeometry(800 * xscale, 780 * yscale, 640 * xscale, 100)
-datey2 = QtGui.QLabel(frame2)
+datey2 = QtWidgets.QLabel(frame2)
 datey2.setObjectName("datey2")
 datey2.setStyleSheet("#datey2 { font-family:sans-serif; color: " +
                      Config.textcolor +
@@ -1134,7 +1139,7 @@ datey2.setStyleSheet("#datey2 { font-family:sans-serif; color: " +
 datey2.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
 datey2.setGeometry(800 * xscale, 840 * yscale, 640 * xscale, 100)
 
-attribution = QtGui.QLabel(frame1)
+attribution = QtWidgets.QLabel(frame1)
 attribution.setObjectName("attribution")
 attribution.setStyleSheet("#attribution { " +
                           " background-color: transparent; color: " +
@@ -1148,12 +1153,12 @@ attribution.setAlignment(Qt.AlignTop)
 attribution.setGeometry(6 * xscale, 3 * yscale, 100 * xscale, 100)
 
 ypos = -25
-wxicon = QtGui.QLabel(frame1)
+wxicon = QtWidgets.QLabel(frame1)
 wxicon.setObjectName("wxicon")
 wxicon.setStyleSheet("#wxicon { background-color: transparent; }")
 wxicon.setGeometry(75 * xscale, ypos * yscale, 150 * xscale, 150 * yscale)
 
-attribution2 = QtGui.QLabel(frame2)
+attribution2 = QtWidgets.QLabel(frame2)
 attribution2.setObjectName("attribution2")
 attribution2.setStyleSheet("#attribution2 { " +
                            "background-color: transparent; color: " +
@@ -1166,13 +1171,13 @@ attribution2.setStyleSheet("#attribution2 { " +
 attribution2.setAlignment(Qt.AlignTop)
 attribution2.setGeometry(6 * xscale, 880 * yscale, 100 * xscale, 100)
 
-wxicon2 = QtGui.QLabel(frame2)
+wxicon2 = QtWidgets.QLabel(frame2)
 wxicon2.setObjectName("wxicon2")
 wxicon2.setStyleSheet("#wxicon2 { background-color: transparent; }")
 wxicon2.setGeometry(0 * xscale, 750 * yscale, 150 * xscale, 150 * yscale)
 
 ypos += 130
-wxdesc = QtGui.QLabel(frame1)
+wxdesc = QtWidgets.QLabel(frame1)
 wxdesc.setObjectName("wxdesc")
 wxdesc.setStyleSheet("#wxdesc { background-color: transparent; color: " +
                      Config.textcolor +
@@ -1184,7 +1189,7 @@ wxdesc.setStyleSheet("#wxdesc { background-color: transparent; color: " +
 wxdesc.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
 wxdesc.setGeometry(3 * xscale, ypos * yscale, 300 * xscale, 100)
 
-wxdesc2 = QtGui.QLabel(frame2)
+wxdesc2 = QtWidgets.QLabel(frame2)
 wxdesc2.setObjectName("wxdesc2")
 wxdesc2.setStyleSheet("#wxdesc2 { background-color: transparent; color: " +
                       Config.textcolor +
@@ -1197,7 +1202,7 @@ wxdesc2.setAlignment(Qt.AlignLeft | Qt.AlignTop)
 wxdesc2.setGeometry(400 * xscale, 800 * yscale, 400 * xscale, 100)
 
 ypos += 25
-temper = QtGui.QLabel(frame1)
+temper = QtWidgets.QLabel(frame1)
 temper.setObjectName("temper")
 temper.setStyleSheet("#temper { background-color: transparent; color: " +
                      Config.textcolor +
@@ -1209,7 +1214,7 @@ temper.setStyleSheet("#temper { background-color: transparent; color: " +
 temper.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
 temper.setGeometry(3 * xscale, ypos * yscale, 300 * xscale, 100)
 
-temper2 = QtGui.QLabel(frame2)
+temper2 = QtWidgets.QLabel(frame2)
 temper2.setObjectName("temper2")
 temper2.setStyleSheet("#temper2 { background-color: transparent; color: " +
                       Config.textcolor +
@@ -1222,7 +1227,7 @@ temper2.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
 temper2.setGeometry(125 * xscale, 780 * yscale, 300 * xscale, 100)
 
 ypos += 80
-press = QtGui.QLabel(frame1)
+press = QtWidgets.QLabel(frame1)
 press.setObjectName("press")
 press.setStyleSheet("#press { background-color: transparent; color: " +
                     Config.textcolor +
@@ -1235,7 +1240,7 @@ press.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
 press.setGeometry(3 * xscale, ypos * yscale, 300 * xscale, 100)
 
 ypos += 30
-humidity = QtGui.QLabel(frame1)
+humidity = QtWidgets.QLabel(frame1)
 humidity.setObjectName("humidity")
 humidity.setStyleSheet("#humidity { background-color: transparent; color: " +
                        Config.textcolor +
@@ -1248,7 +1253,7 @@ humidity.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
 humidity.setGeometry(3 * xscale, ypos * yscale, 300 * xscale, 100)
 
 ypos += 30
-wind = QtGui.QLabel(frame1)
+wind = QtWidgets.QLabel(frame1)
 wind.setObjectName("wind")
 wind.setStyleSheet("#wind { background-color: transparent; color: " +
                    Config.textcolor +
@@ -1261,7 +1266,7 @@ wind.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
 wind.setGeometry(3 * xscale, ypos * yscale, 300 * xscale, 100)
 
 ypos += 20
-wind2 = QtGui.QLabel(frame1)
+wind2 = QtWidgets.QLabel(frame1)
 wind2.setObjectName("wind2")
 wind2.setStyleSheet("#wind2 { background-color: transparent; color: " +
                     Config.textcolor +
@@ -1274,7 +1279,7 @@ wind2.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
 wind2.setGeometry(3 * xscale, ypos * yscale, 300 * xscale, 100)
 
 ypos += 20
-wdate = QtGui.QLabel(frame1)
+wdate = QtWidgets.QLabel(frame1)
 wdate.setObjectName("wdate")
 wdate.setStyleSheet("#wdate { background-color: transparent; color: " +
                     Config.textcolor +
@@ -1286,7 +1291,7 @@ wdate.setStyleSheet("#wdate { background-color: transparent; color: " +
 wdate.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
 wdate.setGeometry(3 * xscale, ypos * yscale, 300 * xscale, 100)
 
-bottom = QtGui.QLabel(frame1)
+bottom = QtWidgets.QLabel(frame1)
 bottom.setObjectName("bottom")
 bottom.setStyleSheet("#bottom { font-family:sans-serif; color: " +
                      Config.textcolor +
@@ -1298,7 +1303,7 @@ bottom.setStyleSheet("#bottom { font-family:sans-serif; color: " +
 bottom.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
 bottom.setGeometry(0, height - 50, width, 50)
 
-temp = QtGui.QLabel(frame1)
+temp = QtWidgets.QLabel(frame1)
 temp.setObjectName("temp")
 temp.setStyleSheet("#temp { font-family:sans-serif; color: " +
                    Config.textcolor +
@@ -1313,7 +1318,7 @@ temp.setGeometry(0, height - 100, width, 50)
 
 forecast = []
 for i in range(0, 9):
-    lab = QtGui.QLabel(frame1)
+    lab = QtWidgets.QLabel(frame1)
     lab.setObjectName("forecast" + str(i))
     lab.setStyleSheet("QWidget { background-color: transparent; color: " +
                       Config.textcolor +
@@ -1325,19 +1330,19 @@ for i in range(0, 9):
     lab.setGeometry(1137 * xscale, i * 100 * yscale,
                     300 * xscale, 100 * yscale)
 
-    icon = QtGui.QLabel(lab)
+    icon = QtWidgets.QLabel(lab)
     icon.setStyleSheet("#icon { background-color: transparent; }")
     icon.setGeometry(0, 0, 100 * xscale, 100 * yscale)
     icon.setObjectName("icon")
 
-    wx = QtGui.QLabel(lab)
+    wx = QtWidgets.QLabel(lab)
     wx.setStyleSheet("#wx { background-color: transparent; }")
     wx.setGeometry(100 * xscale, 5 * yscale, 200 * xscale, 120 * yscale)
     wx.setAlignment(Qt.AlignLeft | Qt.AlignTop)
     wx.setWordWrap(True)
     wx.setObjectName("wx")
 
-    day = QtGui.QLabel(lab)
+    day = QtWidgets.QLabel(lab)
     day.setStyleSheet("#day { background-color: transparent; }")
     day.setGeometry(100 * xscale, 75 * yscale, 200 * xscale, 25 * yscale)
     day.setAlignment(Qt.AlignRight | Qt.AlignBottom)
